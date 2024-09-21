@@ -169,6 +169,7 @@ tedge config set http.client.auth.key_file /etc/tedge/device-certs/local-tedge.k
 tedge config set http.client.auth.cert_file /etc/tedge/device-certs/local-tedge.crt
 
 # thin-edge.io mqtt client settings
+tedge config set http.bind.address 0.0.0.0
 tedge config set mqtt.client.host 127.0.0.1
 tedge config set mqtt.client.port 8883
 tedge config set mqtt.client.auth.ca_file "$(step path)/certs/root_ca.crt"
@@ -176,6 +177,7 @@ tedge config set mqtt.client.auth.cert_file /etc/tedge/device-certs/local-tedge.
 tedge config set mqtt.client.auth.key_file /etc/tedge/device-certs/local-tedge.key
 
 # thin-edge.io c8y proxy client settings
+tedge config set c8y.proxy.bind.address 0.0.0.0
 tedge config set c8y.proxy.client.host "$(hostname)"
 tedge config set c8y.proxy.client.port 8001
 tedge config set c8y.proxy.ca_path "$(step path)/certs"
