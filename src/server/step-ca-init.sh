@@ -59,8 +59,14 @@ else
     echo "Warning: update-ca-certificates is not installed. Make sure you add '$STEPPATH/certs/root_ca.crt' to your trust store"
 fi
 
-# Create a leaf certificate for the server
-# 1 year = 24 * 365 = 8760h
+# Allow other users to inspect certificates
+chmod 755 "$(step path)/certs"
+chmod 644 "$(step path)/certs/"*
+
+#
+# Create certificate for thin-edge.io components (for tedge user)
+#
+echo "Creating x509 certificates for thin-edge.io" >&2
 step certificate create \
     --profile leaf \
     --not-after=8760h \
@@ -75,23 +81,58 @@ step certificate create \
     --san=localhost \
     --san="$(hostname)" \
     --san="$(hostname).local" \
-    "$(hostname)" /etc/mosquitto/certs/svc.crt /etc/mosquitto/certs/svc.key
+    "$(hostname)" /etc/tedge/device-certs/local-tedge.crt /etc/tedge/device-certs/local-tedge.key
 
-chown mosquitto:mosquitto /etc/mosquitto/certs/svc.crt
-chmod 644 /etc/mosquitto/certs/svc.crt
-chown mosquitto:mosquitto /etc/mosquitto/certs/svc.key
-# TODO: How to share the key between thin-edge.io and mosquitto?
-# Or should they use two different certificates?
-# chmod 600 /etc/mosquitto/certs/svc.key
-chmod 644 /etc/mosquitto/certs/svc.key
+chown tedge:tedge /etc/tedge/device-certs/local-tedge.crt
+chmod 644 /etc/tedge/device-certs/local-tedge.crt
+chown tedge:tedge /etc/tedge/device-certs/local-tedge.key
+chmod 600 /etc/tedge/device-certs/local-tedge.key
 
-# TODO: Create separate certificate for thin-edge.io components / the tedge user
-# /etc/tedge/device-certs/local-certs
+# Create service to renew the certificate automatically
+if command -V systemctl >/dev/null >&2; then
+    echo "Enable cert-renewer" >&2
+    systemctl enable cert-renewer@local-tedge.timer
+    if [ -d /run/systemd ]; then
+        systemctl start cert-renewer@local-tedge.timer
+    fi
+fi
 
-# Allow other users to inspect certificates
-chmod 755 "$(step path)/certs"
-chmod 644 "$(step path)/certs/"*
+#
+# Create certificate for mosquitto (for mosquitto user)
+#
+echo "Creating x509 certificates for mosquitto" >&2
+step certificate create \
+    --profile leaf \
+    --not-after=8760h \
+    --bundle \
+    --kty=RSA \
+    --ca="$STEPPATH/certs/intermediate_ca.crt" \
+    --ca-key="$STEPPATH/secrets/intermediate_ca_key" \
+    --no-password \
+    --insecure \
+    --force \
+    --san=127.0.0.1 \
+    --san=localhost \
+    --san="$(hostname)" \
+    --san="$(hostname).local" \
+    "$(hostname)" /etc/tedge/device-certs/local-mosquitto.crt /etc/tedge/device-certs/local-mosquitto.key
 
+chown mosquitto:mosquitto /etc/tedge/device-certs/local-mosquitto.crt
+chmod 644 /etc/tedge/device-certs/local-mosquitto.crt
+chown mosquitto:mosquitto /etc/tedge/device-certs/local-mosquitto.key
+chmod 600 /etc/tedge/device-certs/local-mosquitto.key
+
+ln -s /etc/tedge/device-certs/local-mosquitto.crt /etc/mosquitto/certs/local-mosquitto.crt
+ln -s /etc/tedge/device-certs/local-mosquitto.key /etc/mosquitto/certs/local-mosquitto.key
+
+# Create service to renew the certificate automatically
+if command -V systemctl >/dev/null >&2; then
+    echo "Enable cert-renewer" >&2
+    systemctl enable cert-renewer@local-mosquitto.timer
+    if [ -d /run/systemd ]; then
+        systemctl start cert-renewer@local-mosquitto.timer
+    fi
+fi
 
 # FIXME: These files aren't used to generate an external listener
 # => Workaround: create the mosquitto tls configuration manually
@@ -108,8 +149,8 @@ require_certificate true
 use_identity_as_username true
 use_username_as_clientid false
 cafile $(step path)/certs/root_ca.crt
-certfile /etc/mosquitto/certs/svc.crt
-keyfile /etc/mosquitto/certs/svc.key
+certfile /etc/mosquitto/certs/local-mosquitto.crt
+keyfile /etc/mosquitto/certs/local-mosquitto.key
 EOF
 
 #
@@ -119,27 +160,27 @@ EOF
 # thin-edge.io File Transfer Service
 tedge config set http.client.host "$(hostname)"
 tedge config set http.client.port 8000
-tedge config set http.key_path /etc/mosquitto/certs/svc.key
-tedge config set http.cert_path /etc/mosquitto/certs/svc.crt
+tedge config set http.key_path /etc/tedge/device-certs/local-tedge.key
+tedge config set http.cert_path /etc/tedge/device-certs/local-tedge.crt
 # FIXME: Support reading a file instead of a path
 # tedge config set http.ca_path "$(step path)/certs/root_ca.crt"
 tedge config set http.ca_path "$(step path)/certs"
-tedge config set http.client.auth.key_file /etc/mosquitto/certs/svc.key
-tedge config set http.client.auth.cert_file /etc/mosquitto/certs/svc.crt
+tedge config set http.client.auth.key_file /etc/tedge/device-certs/local-tedge.key
+tedge config set http.client.auth.cert_file /etc/tedge/device-certs/local-tedge.crt
 
 # thin-edge.io mqtt client settings
 tedge config set mqtt.client.host 127.0.0.1
 tedge config set mqtt.client.port 8883
 tedge config set mqtt.client.auth.ca_file "$(step path)/certs/root_ca.crt"
-tedge config set mqtt.client.auth.cert_file /etc/mosquitto/certs/svc.crt
-tedge config set mqtt.client.auth.key_file /etc/mosquitto/certs/svc.key
+tedge config set mqtt.client.auth.cert_file /etc/tedge/device-certs/local-tedge.crt
+tedge config set mqtt.client.auth.key_file /etc/tedge/device-certs/local-tedge.key
 
 # thin-edge.io c8y proxy client settings
 tedge config set c8y.proxy.client.host "$(hostname)"
 tedge config set c8y.proxy.client.port 8001
 tedge config set c8y.proxy.ca_path "$(step path)/certs"
-tedge config set c8y.proxy.cert_path /etc/mosquitto/certs/svc.crt
-tedge config set c8y.proxy.key_path /etc/mosquitto/certs/svc.key
+tedge config set c8y.proxy.cert_path /etc/tedge/device-certs/local-tedge.crt
+tedge config set c8y.proxy.key_path /etc/tedge/device-certs/local-tedge.key
 
 
 # start thin-edge.io services
@@ -164,7 +205,8 @@ verify() {
     mkdir .tmp/
     step certificate create --profile leaf --bundle --kty=RSA -ca="$STEPPATH/certs/intermediate_ca.crt" --ca-key="$STEPPATH/secrets/intermediate_ca_key" --no-password --insecure --force "test_client" .tmp/svc.crt .tmp/svc.key
 
-    # TODO: tedge does not parse "BEGIN EC PRIVATE KEY" => "BEGIN PRIVATE KEY"
+    # TODO: tedge does not support a EC private key which uses the format "BEGIN EC PRIVATE KEY", but changing to "BEGIN PRIVATE KEY" works.
+    #       This may be due to differences between pkcs12#1 and pkcs12#8?
     #  Otherwise the following error occurs: Error: Fail to parse the private key
     if TEDGE_MQTT_CLIENT_HOST=127.0.0.1 TEDGE_MQTT_CLIENT_PORT=8883 TEDGE_MQTT_CLIENT_AUTH_CERT_FILE=.tmp/svc.crt TEDGE_MQTT_CLIENT_AUTH_KEY_FILE=.tmp/svc.key TEDGE_MQTT_CLIENT_AUTH_CA_FILE="$STEPPATH/certs/root_ca.crt" tedge mqtt pub 'tls-client-test' 'example'; then
         echo "MQTT Broker (TLS):             PASS" >&2
