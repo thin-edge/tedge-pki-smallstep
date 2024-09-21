@@ -13,6 +13,7 @@ build:
     nfpm package --config src/server/nfpm.yaml -p rpm -t "{{package_dir}}/"
     nfpm package --config src/server/nfpm.yaml -p deb -t "{{package_dir}}/"
 
+# Publish smallstep packages
 publish-smallstep-packages *ARGS="":
     ./ci/publish-smallstep-packages.sh "{{package_dir}}" {{ARGS}}
 
@@ -20,12 +21,12 @@ publish-smallstep-packages *ARGS="":
 publish *ARGS="":
     ./ci/publish.sh --path "{{package_dir}}" {{ARGS}}
 
-# Start test
+# Run tests
 test *ARGS: build
     #!/usr/bin/env bash
     docker compose -f docker-compose.yaml up --build {{ARGS}} -d
     # docker compose exec tedge bash
-    docker compose exec tedge step-ca-init.sh
+    docker compose exec tedge step-ca-init.sh --san tedge
     ENROL_COMMAND=$(docker compose exec tedge step-ca-admin.sh token child01)
 
     docker compose exec child01 bash -c "$ENROL_COMMAND"
