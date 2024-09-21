@@ -50,11 +50,66 @@ check_services_using_tls() {
 
 case "$ACTION" in
     token)
-        CN="$1"
+        CN=${CN:-}
+        HOST_NAME=${HOST_NAME:-}
+
+        usage() {
+            cat <<EOT
+Generate an enrollment command for a given child device name (which is used as the Common Name).
+A one-liner will be returned which can be used to enroll a child device which is running the
+tedge-agent service.
+
+USAGE
+
+    $0 token <COMMON_NAME> [--host alternative-name]
+
+POSITIONAL ARGUMENTS
+    COMMON_NAME                     Common name of the child device
+
+FLAGS
+    --host <STRING>          Explicit public name which the device is reachable for other devices.
+                             For example, if you are using Azure then this might be the public IP address of the main device
+    --help, -h               Show this help
+
+EXAMPLES
+
+    $0 token mychild01
+    # Create an enrollment command (including a one-time token)
+
+    $0 token mychild01 --host some.public.name
+    # Create an enrollment command (including a one-time token) but using an explicit public address
+EOT
+        }
+
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --host)
+                    HOST_NAME="$2"
+                    shift
+                    ;;
+                --help|-h)
+                    usage
+                    exit 0
+                    ;;
+                *)
+                    CN="$1"
+                    ;;
+            esac
+            shift
+        done
+
+        if [ -z "$HOST_NAME" ]; then
+            if command -V hostname >/dev/null 2>&1; then
+                HOST_NAME="$(hostname)"
+            elif [ -n "$HOST" ]; then
+                HOST_NAME="$HOST"
+            fi  
+        fi
+        
         TOKEN=$(step ca token "$CN" --provisioner-password-file="$PROVISION_PASSWORD_FILE")
         FINGERPRINT=$(step ca root | step certificate fingerprint)
 
-        ENROLL_COMMAND="$0 enrol '$CN' https://$(hostname):8443 $TOKEN $FINGERPRINT"
+        ENROLL_COMMAND="$0 enroll '$CN' --ca-url https://${HOST_NAME}:8443 --fingerprint $FINGERPRINT --token $TOKEN"
 
         if [ -t 1 ]; then
             cat <<EOT >&2
@@ -97,15 +152,84 @@ EOT
             fi
         fi
         ;;
+
     verify)
         check_services_using_tls
         ;;
     
     enrol|enroll)
-        CN="$1"
-        PKI_URL="$2"
-        TOKEN="$3"
-        FINGERPRINT="$4"
+        CN=${CN:-}
+        PKI_URL=${PKI_URL:-}
+        TOKEN=${TOKEN:-}
+        FINGERPRINT=${FINGERPRINT:-}
+        TARGET="${TARGET:-}"
+
+        usage() {
+            cat <<EOT
+Enroll a child device using the given PKI to generate the TLS certificates for secure communication.
+
+Tip: On the main device, run '$0 token <COMMON_NAME>' to generate a one-liner command that you can
+run on the child device to create the child device certificates.
+
+USAGE
+
+    $0 enroll <COMMON_NAME> --ca-url <STEP_CA_URL> --fingerprint "CA_FINGERPRINT" --token "<ENROLLMENT_TOKEN>"
+
+POSITIONAL ARGUMENTS
+    COMMON_NAME                     Common name of the child device
+
+FLAGS
+    --ca-url <STEP_CA_URL>          step-ca server endpoint
+    --fingerprint <FINGERPRINT>     Fingerprint of the root CA from the step-ca server
+    --token <TOKEN>                 One time token used to authenticate against the server. The token is
+                                    only valid for a given common name (set when creating the token)
+    --main-device <DNS|IP_ADDR>     DNS entry or IP address of the main device in case if it differs from
+                                    the ca-url, otherwise the main-device value will be derived from the ca-url
+    --help, -h                      Show this help
+
+EXAMPLES
+
+    $0 enroll mychild01 --ca-url https://tedge:8443 --fingerprint abcdef --token "asfdasdfasdfasdfasdf"
+    # Enroll a device called mychild01
+
+    $0 enroll mychild01 --ca-url https://tedge:8443 --fingerprint abcdef --token "asfdasdfasdfasdfasdf" --main-device other-address
+    # Enroll a device called mychild01 but use another alias for the device
+EOT
+        }
+
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                --main-device)
+                    TARGET="$2"
+                    shift
+                    ;;
+                --ca-url)
+                    PKI_URL="$2"
+                    shift
+                    ;;
+                --token)
+                    TOKEN="$2"
+                    shift
+                    ;;
+                --fingerprint)
+                    FINGERPRINT="$2"
+                    shift
+                    ;;
+                --help|-h)
+                    usage
+                    exit 0
+                    ;;
+                --*|*-)
+                    echo "Unknown flag: $1"
+                    exit 1
+                    ;;
+                *)
+                    # Positional argument
+                    CN="$1"
+                    ;;
+            esac
+            shift
+        done
 
         step ca bootstrap --ca-url "$PKI_URL" --fingerprint "$FINGERPRINT" --install
 
@@ -122,9 +246,11 @@ EOT
         chown tedge:tedge "$(tedge config get device.key_path)"
         chmod 600 "$(tedge config get device.key_path)"
 
-        echo "Configuring tedge-agent as a child device"
-        TARGET=$(echo "$PKI_URL" | sed 's|.*://||g' | sed 's/:.*//g')
+        if [ -z "$TARGET" ]; then
+            TARGET=$(echo "$PKI_URL" | sed 's|.*://||g' | sed 's/:.*//g')
+        fi
 
+        echo "Configuring tedge-agent as a child device connecting to $TOPIC_ID"
         tedge config set mqtt.device_topic_id "device/$TARGET//"
 
         # thin-edge.io File Transfer Service
