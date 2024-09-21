@@ -25,5 +25,5 @@ jobs:
       - run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
         name: Install dependencies
 
-      - name: Package
-        run: just build
+      - name: Run system tests
+        run: just test
