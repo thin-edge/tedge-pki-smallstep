@@ -194,42 +194,4 @@ if [ -d /run/systemd ]; then
     systemctl restart step-ca
 fi
 
-verify() {
-    echo "Waiting for step-ca to startup"
-    sleep 5
-
-    mkdir .tmp/
-    step certificate create --profile leaf --bundle --kty=RSA -ca="$STEPPATH/certs/intermediate_ca.crt" --ca-key="$STEPPATH/secrets/intermediate_ca_key" --no-password --insecure --force "test_client" .tmp/svc.crt .tmp/svc.key
-
-    # TODO: tedge does not support a EC private key which uses the format "BEGIN EC PRIVATE KEY", but changing to "BEGIN PRIVATE KEY" works.
-    #       This may be due to differences between pkcs12#1 and pkcs12#8?
-    #  Otherwise the following error occurs: Error: Fail to parse the private key
-    if TEDGE_MQTT_CLIENT_HOST=127.0.0.1 TEDGE_MQTT_CLIENT_PORT=8883 TEDGE_MQTT_CLIENT_AUTH_CERT_FILE=.tmp/svc.crt TEDGE_MQTT_CLIENT_AUTH_KEY_FILE=.tmp/svc.key TEDGE_MQTT_CLIENT_AUTH_CA_FILE="$STEPPATH/certs/root_ca.crt" tedge mqtt pub 'tls-client-test' 'example'; then
-        echo "MQTT Broker (TLS):             PASS" >&2
-    else
-        echo "MQTT Broker (TLS):             FAIL" >&2
-        exit 2
-    fi
-
-    if curl https://127.0.0.1:8000/ --cacert "$STEPPATH/certs/root_ca.crt" --key .tmp/svc.key --cert .tmp/svc.crt; then
-        echo "File Transfer Service (HTTPS): PASS" >&2
-    else
-        echo "File Transfer Service (HTTPS): FAIL" >&2
-        exit 2
-    fi
-
-    if tedge config get c8y.url >/dev/null 2>&1; then
-        if curl https://127.0.0.1:8001/c8y/tenant/currentTenant --cacert "$STEPPATH/certs/root_ca.crt" --key .tmp/svc.key --cert .tmp/svc.crt >/dev/null 2>&1; then
-            echo "c8y Proxy Service (HTTPS): PASS" >&2
-        else
-            echo "c8y Proxy Service (HTTPS): FAIL" >&2
-        fi
-    fi
-
-    # Or using mosquitto_pub
-    # mosquitto_pub --key .tmp/svc.key --cert .tmp/svc.crt --cafile "$STEPPATH/certs/root_ca.crt" -p 8883 -d -h 127.0.0.1 -t 'tls-client-test' -m 'example'
-    
-    rm -rf .tmp/
-}
-
-verify
+step-ca-admin.sh verify
