@@ -7,19 +7,67 @@ PROVISION_PASSWORD_FILE="$STEPPATH/secrets/provisioner-password"
 ACTION="$1"
 shift
 
+check_services_using_tls() {
+    echo
+    echo "Checking service status (with mTLS)"
+    echo
+
+    OK_COUNT=0
+    if timeout 5 tedge mqtt pub "tls-client-test" "test" >/dev/null 2>&1; then
+        echo "    MQTT Broker:          PASS" >&2
+        OK_COUNT=$((OK_COUNT + 1))
+    else
+        echo "    MQTT Broker:          FAIL" >&2
+        exit 2
+    fi
+
+    if curl "https://$(tedge config get http.client.host):$(tedge config get http.client.port)/" --capath "$(tedge config get http.ca_path)" --key "$(tedge config get http.client.auth.key_file)" --cert "$(tedge config get http.client.auth.cert_file)"; then
+        echo "    FileTransferService:  PASS" >&2
+        OK_COUNT=$((OK_COUNT + 1))
+    else
+        echo "    FileTransferService:  FAIL" >&2
+        exit 2
+    fi
+
+    # TODO: Check if the mapper is connected or not
+    if curl "https://$(tedge config get c8y.proxy.client.host):$(tedge config get c8y.proxy.client.port)/c8y/tenant/currentTenant" --capth "$(tedge config get c8y.proxy.ca_path)" --key "$(tedge config get c8y.proxy.key_path)" --cert "$(tedge config get c8y.proxy.cert_path)" >/dev/null 2>&1; then
+        echo "    Cumulocity IoT Proxy: PASS" >&2
+        OK_COUNT=$((OK_COUNT + 1))
+    else
+        echo "    Cumulocity IoT Proxy: FAIL" >&2
+    fi
+
+    printf "\nSummary\n\n"
+
+    if [ "$OK_COUNT" -ge 2 ]; then
+        printf '    OK - %s of 3 services are working\n\n' "$OK_COUNT"
+        return 0
+    else
+        printf '    FAIL - Only %s of 3 services are working\n\n' "$OK_COUNT"
+        return 1
+    fi
+}
+
 case "$ACTION" in
     token)
         CN="$1"
         TOKEN=$(step ca token "$CN" --provisioner-password-file="$PROVISION_PASSWORD_FILE")
         FINGERPRINT=$(step ca root | step certificate fingerprint)
 
-        cat <<EOT
+        ENROLL_COMMAND="$0 enrol '$CN' https://$(hostname):8443 $TOKEN $FINGERPRINT"
+
+        if [ -t 1 ]; then
+            cat <<EOT >&2
 
 Enroll a child device using the following command (using a one-time token):
 
-    $0 enrol "$CN" "https://$(hostname):8443" "$TOKEN" "$FINGERPRINT"
+    $ENROLL_COMMAND
 
 EOT
+        else
+            # Only print out the one-liner
+            echo "$ENROLL_COMMAND"
+        fi
         ;;
     
     renew)
@@ -49,6 +97,9 @@ EOT
             fi
         fi
         ;;
+    verify)
+        check_services_using_tls
+        ;;
     
     enrol|enroll)
         CN="$1"
@@ -56,7 +107,6 @@ EOT
         TOKEN="$3"
         FINGERPRINT="$4"
 
-        echo "Installing PKI root certificate"
         step ca bootstrap --ca-url "$PKI_URL" --fingerprint "$FINGERPRINT" --install
 
         # Note: Only use the device.key_path and cert_path for storage of a common place for mtls cert and key
@@ -101,12 +151,7 @@ EOT
         tedge config set c8y.proxy.cert_path "$(tedge config get device.cert_path)"
         tedge config set c8y.proxy.key_path "$(tedge config get device.key_path)"
 
-        if tedge mqtt pub 'test-tls-client' 'test'; then
-            echo "MQTT Broker (TLS):             PASS" >&2
-        else
-            echo "MQTT Broker (TLS):             FAIL" >&2
-            exit 2
-        fi
+        check_services_using_tls
 
         # Enable services
         if command -V systemctl >/dev/null 2>&1; then
@@ -117,6 +162,8 @@ EOT
                 systemctl restart tedge-agent
             fi
         fi
+
+        echo "The child device has been successfully enrolled"
         ;;
     *)
         echo "Unknown command: $ACTION" >&2

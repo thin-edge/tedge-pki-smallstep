@@ -22,9 +22,10 @@ publish *ARGS="":
 
 # Start test
 test *ARGS: build
+    #!/usr/bin/env bash
     docker compose -f docker-compose.yaml up --build {{ARGS}} -d
     # docker compose exec tedge bash
     docker compose exec tedge step-ca-init.sh
-    docker compose exec tedge step-ca-admin.sh token child01
+    ENROL_COMMAND=$(docker compose exec tedge step-ca-admin.sh token child01)
 
-    docker compose exec child01 bash
+    docker compose exec child01 bash -c "$ENROL_COMMAND"

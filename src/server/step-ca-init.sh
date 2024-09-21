@@ -89,8 +89,8 @@ chown tedge:tedge /etc/tedge/device-certs/local-tedge.key
 chmod 600 /etc/tedge/device-certs/local-tedge.key
 
 # Create service to renew the certificate automatically
-if command -V systemctl >/dev/null >&2; then
-    echo "Enable cert-renewer" >&2
+if command -V systemctl >/dev/null 2>&1; then
+    echo "Enabling cert-renewer service for local-tedge" >&2
     systemctl enable cert-renewer@local-tedge.timer
     if [ -d /run/systemd ]; then
         systemctl start cert-renewer@local-tedge.timer
@@ -126,7 +126,7 @@ ln -s /etc/tedge/device-certs/local-mosquitto.crt /etc/mosquitto/certs/local-mos
 ln -s /etc/tedge/device-certs/local-mosquitto.key /etc/mosquitto/certs/local-mosquitto.key
 
 # Create service to renew the certificate automatically
-if command -V systemctl >/dev/null >&2; then
+if command -V systemctl >/dev/null 2>&1; then
     echo "Enable cert-renewer" >&2
     systemctl enable cert-renewer@local-mosquitto.timer
     if [ -d /run/systemd ]; then
