@@ -81,6 +81,7 @@ step certificate create \
     --san=localhost \
     --san="$(hostname)" \
     --san="$(hostname).local" \
+    "$@" \
     "$(hostname)" /etc/tedge/device-certs/local-tedge.crt /etc/tedge/device-certs/local-tedge.key
 
 chown tedge:tedge /etc/tedge/device-certs/local-tedge.crt
@@ -115,6 +116,7 @@ step certificate create \
     --san=localhost \
     --san="$(hostname)" \
     --san="$(hostname).local" \
+    "$@" \
     "$(hostname)" /etc/tedge/device-certs/local-mosquitto.crt /etc/tedge/device-certs/local-mosquitto.key
 
 chown mosquitto:mosquitto /etc/tedge/device-certs/local-mosquitto.crt
