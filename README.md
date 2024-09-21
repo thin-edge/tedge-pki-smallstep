@@ -24,7 +24,7 @@ It is assumed that you have already installed thin-edge.io no the main device. I
     **Debian/Ubuntu**
 
     ```sh
-    apt-get install -y tedge-pki-smallstep-ca
+    apt-get install tedge-pki-smallstep-ca
     ```
 
 2. Configure and start the step-ca server
@@ -49,7 +49,7 @@ It is assumed that you have already installed thin-edge.io no the main device. I
     **Debian/Ubuntu**
 
     ```sh
-    apt-get install -y tedge-pki-smallstep-client
+    apt-get install tedge-pki-smallstep-client
     ```
 
 3. Open a shell on the main device and get an enrollment token
