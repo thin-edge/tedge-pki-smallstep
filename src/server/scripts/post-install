@@ -1,8 +1,6 @@
 #!/bin/sh
 set -e
 
-SERVICE_NAME=tedge-container-monitor
-
 # Step 1, decide if we should use SystemD or init/upstart
 use_systemctl="True"
 install_service="True"
@@ -19,14 +17,7 @@ fi
 
 cleanup() {
     # This is where you remove files that were not needed on this platform / system
-    if [ "${use_systemctl}" = "False" ]; then
-        rm -f "/usr/lib/systemd/system/${SERVICE_NAME}.service"
-    fi
-
-    if [ "${install_service}" = "False" ]; then
-        rm -f "/etc/chkconfig/${SERVICE_NAME}"
-        rm -f "/etc/init.d/${SERVICE_NAME}"
-    fi
+    echo "Cleaning up"
 }
 
 cleanInstall() {
@@ -40,29 +31,15 @@ cleanInstall() {
     # Step 3 (clean install), enable the service in the proper way for this platform
     if [ "${use_systemctl}" = "False" ]; then
         printf "\033[32m Installing init.d/open-rc service\033[0m\n"
-
-        if command -V chkconfig >/dev/null 2>&1; then
-          chkconfig --add "$SERVICE_NAME"
-        fi
-
-        service "$SERVICE_NAME" restart ||:
     else
         printf "\033[32m Installing systemd service\033[0m\n"
         # rhel/centos7 cannot use ExecStartPre=+ to specify the pre start should be run as root
         # even if you want your service to run as non root.
         if [ "${systemd_version%%.*}" -lt 231 ]; then
             printf "\033[31m systemd version %s is less then 231, fixing the service file \033[0m\n" "${systemd_version}"
-            sed -i "s/=+/=/g" "/usr/lib/systemd/system/${SERVICE_NAME}.service"
         fi
         printf "\033[32m Reload the service unit from disk\033[0m\n"
         systemctl daemon-reload ||:
-        printf "\033[32m Unmask the service\033[0m\n"
-        systemctl unmask "$SERVICE_NAME" ||:
-        printf "\033[32m Set the preset flag for the service unit\033[0m\n"
-        systemctl preset "$SERVICE_NAME" ||:
-        printf "\033[32m Set the enabled flag for the service unit\033[0m\n"
-        systemctl enable "$SERVICE_NAME" ||:
-        systemctl restart "$SERVICE_NAME" ||:
     fi
 }
 
