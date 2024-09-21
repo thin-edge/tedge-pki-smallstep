@@ -4,6 +4,15 @@ The project provides a community plugin for thin-edge.io which provides a local 
 
 ## Installation
 
+### Pre-requisites
+
+If you are using a firewall on the main device (or in your cloud setup), ensure that the following ports are open, otherwise the child device will not be able to connect to the main device.
+
+* Port 8443 (TCP) - INCOMING - step-ca endpoint (local PKI) used to issue certificates for the local network
+* Port 8883 (TCP) - INCOMING - mosquitto broker
+* Port 8000 (TCP) - INCOMING - thin-edge.io File Transfer Service (HTTP server)
+* Port 8001 (TCP) - INCOMING - thin-edge.io Cumulocity Local Proxy
+
 ### Main device
 
 The pki should be installed on the main device so that the child devices can request an initial x509 certificate, and also setup periodic renewal.
@@ -20,22 +29,38 @@ It is assumed that you have already installed thin-edge.io no the main device. I
 
     ```sh
     step-ca-init.sh
+
+    # Or add some additional names to be included in the generated certificates
+    step-ca-init.sh --san "other.name" --san "alternative.name"
     ```
 
 ### Child device
 
-1. Install the thin-edge.io and the pki client integration
+1. Install thin-edge.io
+
+    ```sg
+    wget -O - thin-edge.io/install.sh | sh -s
+    ```
+
+2. Install the pki client thin-edge.io integration package
 
     **Debian/Ubuntu**
 
     ```sh
-    apt-get install -y tedge tedge-agent tedge-pki-smallstep-client
+    wget -O - thin-edge.io/install.sh | sh -s
+    apt-get install -y tedge-pki-smallstep-client
     ```
 
-2. Open a shell on the main device and get an enrollment token
+3. Open a shell on the main device and get an enrollment token
 
     ```sh
     step-ca-admin.sh token <child_name>
+    ```
+
+    You can also specify an explicit `--host <name>` flag if the server is only reachable from a public IP address / DNS entry:
+
+    ```sh
+    step-ca-admin.sh token <child_name> --host some.public.name
     ```
 
     Follow the instructions printed to the console, and then execute the command on the child device
