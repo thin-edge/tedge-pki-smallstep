@@ -14,7 +14,8 @@ case "$ACTION" in
         FINGERPRINT=$(step ca root | step certificate fingerprint)
 
         cat <<EOT
-Enroll a child device using the following command:
+
+Enroll a child device using the following command (using a one-time token):
 
     $0 enrol "$CN" "https://$(hostname):8443" "$TOKEN" "$FINGERPRINT"
 
