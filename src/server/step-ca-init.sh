@@ -183,19 +183,13 @@ tedge config set c8y.proxy.cert_path /etc/tedge/device-certs/local-tedge.crt
 tedge config set c8y.proxy.key_path /etc/tedge/device-certs/local-tedge.key
 
 
-# start thin-edge.io services
-systemctl restart mosquitto
-systemctl start tedge-agent
-
-# Start the PKI service
-if command -V systemctl >/dev/null 2>&1; then
+# Start/restart services
+if [ -d /run/systemd ]; then
+    systemctl restart mosquitto
+    systemctl restart tedge-agent.service
+    systemctl restart tedge-mapper-c8y.service
     systemctl enable step-ca
-    systemctl start step-ca
-else
-    echo "WARNING: Could not find a compatible service manager"
-    if ! pgrep -f step-ca; then
-        step-ca &
-    fi
+    systemctl restart step-ca
 fi
 
 verify() {
