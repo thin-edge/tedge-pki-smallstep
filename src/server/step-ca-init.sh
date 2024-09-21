@@ -34,7 +34,18 @@ if [ "$CURRENT_USER" = 0 ]; then
     chmod 600 "$PASSWORD_FILE"
 fi
 
-step ca init --password-file="$PASSWORD_FILE" --key-password-file="$KEY_PASSWORD_FILE" --provisioner-password-file="$PROVISION_PASSWORD_FILE" --deployment-type=standalone --provisioner=tedge --name tedge-local --dns=127.0.0.1 --dns=localhost --dns="$(hostname)" --address=:8443
+step ca init \
+    --password-file="$PASSWORD_FILE" \
+    --key-password-file="$KEY_PASSWORD_FILE" \
+    --provisioner-password-file="$PROVISION_PASSWORD_FILE" \
+    --deployment-type=standalone \
+    --provisioner=tedge \
+    --name tedge-local \
+    --dns=127.0.0.1 \
+    --dns=localhost \
+    --dns="$(hostname)" \
+    --dns="$(hostname).local" \
+    --address=:8443
 
 # Unencrypt the key as mosquitto needs to access it
 step crypto change-pass "$(step path)/secrets/intermediate_ca_key" --password-file="$PASSWORD_FILE" --no-password --insecure --force
