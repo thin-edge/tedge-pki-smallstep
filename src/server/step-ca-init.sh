@@ -48,6 +48,10 @@ chmod 600 "$(step path)/secrets/intermediate_ca_key"
 # 8760h = 365 days (max)
 step ca provisioner update tedge --x509-min-dur 24h --x509-default-dur 720h --x509-max-dur 4320h
 
+# Allow other users to inspect certificates
+chmod 755 "$(step path)/certs"
+chmod 644 "$(step path)/certs/"*
+
 # TODO: Check why the root certificate needs to be placed in the global store
 # for the file transfer service to work, otherwise the following error occurs:
 #   config-manager failed uploading configuration snapshot: error sending request for url (https://127.0.0.1:8000/tedge/file-transfer/smallstep-test01/config_snapshot/tedge.toml-c8y-mapper-211213): error trying to connect: invalid peer certificate: UnknownIssuer: error trying to connect: invalid peer certificate: UnknownIssuer: invalid peer certificate: UnknownIssuer
@@ -58,10 +62,6 @@ if command -V update-ca-certificates >/dev/null 2>&1; then
 else
     echo "Warning: update-ca-certificates is not installed. Make sure you add '$STEPPATH/certs/root_ca.crt' to your trust store"
 fi
-
-# Allow other users to inspect certificates
-chmod 755 "$(step path)/certs"
-chmod 644 "$(step path)/certs/"*
 
 #
 # Create certificate for thin-edge.io components (for tedge user)
