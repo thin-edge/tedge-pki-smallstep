@@ -1,6 +1,6 @@
 # thin-edge.io Smallstep (local) PKI integration
 
-The project provides a community plugin for thin-edge.io which provides a local PKI to make it easier to setup TLS communication for mutual TLS authentication for all thin-edge.io components and child devices.
+The project provides a community plugin for thin-edge.io which provides a local PKI (from [Smallstep](https://smallstep.com/)) to make it easier to setup TLS communication for mutual TLS authentication for all thin-edge.io components and child devices.
 
 ## Installation
 
@@ -19,13 +19,15 @@ The pki should be installed on the main device so that the child devices can req
 
 It is assumed that you have already installed thin-edge.io no the main device. If you haven't please follow the [official installation instructions](https://thin-edge.github.io/thin-edge.io/install/).
 
-1. Install the tedge pki integration (which includes the installation of smallstep)
+1. Install the tedge pki integration (which includes the installation of step-ca from [Smallstep](https://smallstep.com/))
+
+    **Debian/Ubuntu**
 
     ```sh
     apt-get install -y tedge-pki-smallstep-ca
     ```
 
-2. Configure and start the smallstep ca server
+2. Configure and start the step-ca server
 
     ```sh
     step-ca-init.sh
@@ -47,7 +49,6 @@ It is assumed that you have already installed thin-edge.io no the main device. I
     **Debian/Ubuntu**
 
     ```sh
-    wget -O - thin-edge.io/install.sh | sh -s
     apt-get install -y tedge-pki-smallstep-client
     ```
 
