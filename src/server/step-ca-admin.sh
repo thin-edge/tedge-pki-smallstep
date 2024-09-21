@@ -91,6 +91,11 @@ EOT
                     usage
                     exit 0
                     ;;
+                --*|-*)
+                    echo "Unknown flag: $1"
+                    usage
+                    exit 1
+                    ;;
                 *)
                     CN="$1"
                     ;;
@@ -221,6 +226,7 @@ EOT
                     ;;
                 --*|*-)
                     echo "Unknown flag: $1"
+                    usage
                     exit 1
                     ;;
                 *)
