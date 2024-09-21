@@ -1,0 +1,19 @@
+[Unit]
+Description=Smallstep step-ca
+After=network-online.target
+Documentation=https://smallstep.com/docs/step-ca/certificate-authority-server-production
+StartLimitIntervalSec=0
+
+[Service]
+User=root
+
+Environment=STEPPATH=/etc/step-ca \
+            CERT_LOCATION=/etc/step-ca/certs/%i.crt \
+            PASSWORD_FILE=/etc/step-ca/secrets/password \
+            KEY_LOCATION=/etc/step-ca/secrets/%i.key
+
+; ExecStart renews the certificate, if ExecStartPre was successful.
+ExecStart=/usr/bin/step-ca --password-file "$PASSWORD_FILE"
+
+[Install]
+WantedBy=multi-user.target

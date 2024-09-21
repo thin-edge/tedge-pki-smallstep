@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://nfpm.goreleaser.com/static/schema.json
+name: tedge-pki-smallstep-ca
+arch: all
+platform: linux
+version: ${SEMVER}
+section: misc
+priority: optional
+maintainer: thin-edge.io <info@thin-edge.io>
+description: thin-edge.io PKI integration with Smallstep step-ca
+vendor: thin-edge.io
+homepage: https://github.com/thin-edge/tedge-pki-smallstep
+license: MIT
+scripts:
+  preremove: ./src/server/scripts/pre-remove
+  postinstall: ./src/server/scripts/post-install
+  postremove: ./src/server/scripts/post-remove
+apk:
+  # Use noarch instead of "all"
+  arch: noarch
+depends:
+  - step-ca
+  - step-cli
+contents:
+  - src: ./src/server/step-ca-init.sh
+    dst: /usr/bin/
+    file_info:
+      mode: 0755
+      owner: tedge
+      group: tedge
+
+  - src: ./src/server/step-ca-admin.sh
+    dst: /usr/bin/
+    file_info:
+      mode: 0755
+      owner: tedge
+      group: tedge
+
+  - src: ./src/server/services/systemd/step-ca.service
+    dst: /usr/lib/systemd/system/
+    file_info:
+      mode: 0755
+      owner: tedge
+      group: tedge
+
+  # TODO: Add renewal service for the root and intermediate ca renewal
+  # - src: ./src/monitor/services/systemd/cert-renewer@.timer
+  #   dst: /usr/lib/systemd/system/
+  #   file_info:
+  #     mode: 0755
+  #     owner: tedge
+  #     group: tedge
+
+  # - src: ./src/monitor/services/systemd/cert-renewer.target
+  #   dst: /usr/lib/systemd/system/
+  #   file_info:
+  #     mode: 0755
+  #     owner: tedge
+  #     group: tedge

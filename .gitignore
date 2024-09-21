@@ -1,0 +1,10 @@
+*.csr
+*.pem
+*.db
+dist/
+*.tmp
+.DS_Store
+*.srl
+*.key
+.env
+*.crt

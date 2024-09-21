@@ -1,0 +1,12 @@
+services:
+  tedge:
+    build:
+      dockerfile: images/main.dockerfile
+      context: .
+    privileged: true
+
+  child01:
+    build:
+      dockerfile: images/child.dockerfile
+      context: .
+    privileged: true
