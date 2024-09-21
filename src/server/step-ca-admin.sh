@@ -114,16 +114,13 @@ EOT
         tedge config set device.cert_path /etc/tedge/device-certs/tedge-agent.crt
 
         echo "Creating child certificate"
-        step ca certificate --kty=RSA --ca-url "$PKI_URL" --token "$TOKEN" "$CN" "svc.crt" "svc.key"
+        step ca certificate --kty=RSA --ca-url "$PKI_URL" --token "$TOKEN" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
 
         # Set permissions (before moving them)
-        chown tedge:tedge svc.crt
-        chmod 644 svc.crt
-        chown tedge:tedge svc.key
-        chmod 600 svc.key
-
-        mv svc.crt "$(tedge config get device.cert_path)"
-        mv svc.key "$(tedge config get device.key_path)"
+        chown tedge:tedge "$(tedge config get device.cert_path)"
+        chmod 644 "$(tedge config get device.cert_path)"
+        chown tedge:tedge "$(tedge config get device.key_path)"
+        chmod 600 "$(tedge config get device.key_path)"
 
         echo "Configuring tedge-agent as a child device"
         TARGET=$(echo "$PKI_URL" | sed 's|.*://||g' | sed 's/:.*//g')
