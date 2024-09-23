@@ -34,6 +34,9 @@ It is assumed that you have already installed thin-edge.io no the main device. I
 
     # Or add some additional names to be included in the generated certificates
     step-ca-init.sh --san "other.name" --san "alternative.name"
+
+    # Enforce using .local addresses
+    step-ca-init.sh --domain-suffix local
     ```
 
 ### Child device

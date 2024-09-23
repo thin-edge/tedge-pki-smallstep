@@ -22,19 +22,17 @@ check_services_using_tls() {
         OK_COUNT=$((OK_COUNT + 1))
     else
         echo "    MQTT Broker:          FAIL" >&2
-        exit 2
     fi
 
-    if curl "https://$(tedge config get http.client.host):$(tedge config get http.client.port)/" --capath "$(tedge config get http.ca_path)" --key "$(tedge config get http.client.auth.key_file)" --cert "$(tedge config get http.client.auth.cert_file)"; then
+    if curl -4 "https://$(tedge config get http.client.host):$(tedge config get http.client.port)/" --capath "$(tedge config get http.ca_path)" --key "$(tedge config get http.client.auth.key_file)" --cert "$(tedge config get http.client.auth.cert_file)"; then
         echo "    FileTransferService:  PASS" >&2
         OK_COUNT=$((OK_COUNT + 1))
     else
         echo "    FileTransferService:  FAIL" >&2
-        exit 2
     fi
 
     # TODO: Check if the mapper is connected or not
-    if curl "https://$(tedge config get c8y.proxy.client.host):$(tedge config get c8y.proxy.client.port)/c8y/tenant/currentTenant" --capath "$(tedge config get c8y.proxy.ca_path)" --key "$(tedge config get c8y.proxy.key_path)" --cert "$(tedge config get c8y.proxy.cert_path)" >/dev/null 2>&1; then
+    if curl -4 "https://$(tedge config get c8y.proxy.client.host):$(tedge config get c8y.proxy.client.port)/c8y/tenant/currentTenant" --capath "$(tedge config get c8y.proxy.ca_path)" --key "$(tedge config get c8y.proxy.key_path)" --cert "$(tedge config get c8y.proxy.cert_path)" >/dev/null 2>&1; then
         echo "    Cumulocity IoT Proxy: PASS" >&2
         OK_COUNT=$((OK_COUNT + 1))
     else
@@ -163,7 +161,9 @@ EOT
         ;;
 
     verify)
-        check_services_using_tls
+        if ! check_services_using_tls; then
+            exit 2
+        fi
         ;;
 
     enrol|enroll)
