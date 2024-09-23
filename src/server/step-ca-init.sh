@@ -231,6 +231,10 @@ if [ -d /run/systemd ]; then
     systemctl restart mosquitto
     systemctl restart tedge-agent.service
 
+    if systemctl --quiet is-active tedge-mapper-collectd.service; then
+        systemctl restart tedge-mapper-collectd.service
+    fi
+
     # Only restart configured mappers
     if tedge config get c8y.url >/dev/null 2>&1; then
         systemctl restart tedge-mapper-c8y.service
