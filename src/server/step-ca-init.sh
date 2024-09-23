@@ -1,6 +1,10 @@
 #!/bin/sh
 set -e
 
+if [ "${DEBUG:-}" = 1 ]; then
+    set -x
+fi
+
 export STEPPATH="/etc/step-ca"
 
 # The path to the file containing the password to encrypt the keys
@@ -47,6 +51,26 @@ step ca init \
     --dns="$(hostname).local" \
     --address=:8443
 
+# Allow other users to inspect certificates
+chmod 755 "$(step path)/certs"
+chmod 644 "$(step path)/certs/"*
+
+if [ -d /run/systemd ]; then
+    # Stop the ca before configuring it
+    systemctl stop step-ca
+fi
+
+# TODO: Check why the root certificate needs to be placed in the global store
+# for the file transfer service to work, otherwise the following error occurs:
+#   config-manager failed uploading configuration snapshot: error sending request for url (https://127.0.0.1:8000/tedge/file-transfer/smallstep-test01/config_snapshot/tedge.toml-c8y-mapper-211213): error trying to connect: invalid peer certificate: UnknownIssuer: error trying to connect: invalid peer certificate: UnknownIssuer: invalid peer certificate: UnknownIssuer
+if command -V update-ca-certificates >/dev/null 2>&1; then
+    echo "Installing root certificate"
+    cp -a "$STEPPATH/certs/root_ca.crt" /usr/local/share/ca-certificates/
+    update-ca-certificates
+else
+    echo "Warning: update-ca-certificates is not installed. Make sure you add '$STEPPATH/certs/root_ca.crt' to your trust store"
+fi
+
 # Unencrypt the key as mosquitto needs to access it
 step crypto change-pass "$(step path)/secrets/intermediate_ca_key" --password-file="$PASSWORD_FILE" --no-password --insecure --force
 chown mosquitto:mosquitto "$(step path)/secrets/intermediate_ca_key"
@@ -58,21 +82,6 @@ chmod 600 "$(step path)/secrets/intermediate_ca_key"
 # 720h = 30 days (default)
 # 8760h = 365 days (max)
 step ca provisioner update tedge --x509-min-dur 24h --x509-default-dur 720h --x509-max-dur 4320h
-
-# Allow other users to inspect certificates
-chmod 755 "$(step path)/certs"
-chmod 644 "$(step path)/certs/"*
-
-# TODO: Check why the root certificate needs to be placed in the global store
-# for the file transfer service to work, otherwise the following error occurs:
-#   config-manager failed uploading configuration snapshot: error sending request for url (https://127.0.0.1:8000/tedge/file-transfer/smallstep-test01/config_snapshot/tedge.toml-c8y-mapper-211213): error trying to connect: invalid peer certificate: UnknownIssuer: error trying to connect: invalid peer certificate: UnknownIssuer: invalid peer certificate: UnknownIssuer
-if command -V update-ca-certificates >/dev/null 2>&1; then
-    echo "Installing root certificate"
-    cp "$STEPPATH/certs/root_ca.crt" /usr/local/share/ca-certificates/
-    update-ca-certificates
-else
-    echo "Warning: update-ca-certificates is not installed. Make sure you add '$STEPPATH/certs/root_ca.crt' to your trust store"
-fi
 
 #
 # Create certificate for thin-edge.io components (for tedge user)
@@ -135,8 +144,8 @@ chmod 644 /etc/tedge/device-certs/local-mosquitto.crt
 chown mosquitto:mosquitto /etc/tedge/device-certs/local-mosquitto.key
 chmod 600 /etc/tedge/device-certs/local-mosquitto.key
 
-ln -s /etc/tedge/device-certs/local-mosquitto.crt /etc/mosquitto/certs/local-mosquitto.crt
-ln -s /etc/tedge/device-certs/local-mosquitto.key /etc/mosquitto/certs/local-mosquitto.key
+ln -sf /etc/tedge/device-certs/local-mosquitto.crt /etc/mosquitto/certs/local-mosquitto.crt
+ln -sf /etc/tedge/device-certs/local-mosquitto.key /etc/mosquitto/certs/local-mosquitto.key
 
 # Create service to renew the certificate automatically
 if command -V systemctl >/dev/null 2>&1; then
