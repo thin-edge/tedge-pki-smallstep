@@ -112,9 +112,9 @@ EOT
                 HOST_NAME="$(hostname)"
             elif [ -n "$HOST" ]; then
                 HOST_NAME="$HOST"
-            fi  
+            fi
         fi
-        
+
         TOKEN=$(step ca token "$CN" --provisioner-password-file="$PROVISION_PASSWORD_FILE")
         FINGERPRINT=$(step ca root | step certificate fingerprint)
 
@@ -133,7 +133,7 @@ EOT
             echo "$ENROLL_COMMAND"
         fi
         ;;
-    
+
     renew)
         #
         # Force renewing of the tedge-agent certificate
@@ -145,7 +145,7 @@ EOT
             CERT_LOCATION="$(tedge config get device.cert_path)"
             KEY_LOCATION="$(tedge config get device.key_path)"
         fi
-        
+
         # TODO: Should the certs be renewed atomically to avoid corruption?
         /usr/bin/step ca renew --force "${CERT_LOCATION}" "${KEY_LOCATION}"
 
@@ -165,7 +165,7 @@ EOT
     verify)
         check_services_using_tls
         ;;
-    
+
     enrol|enroll)
         CN=${CN:-}
         PKI_URL=${PKI_URL:-}
