@@ -34,7 +34,7 @@ check_services_using_tls() {
     fi
 
     # TODO: Check if the mapper is connected or not
-    if curl "https://$(tedge config get c8y.proxy.client.host):$(tedge config get c8y.proxy.client.port)/c8y/tenant/currentTenant" --capth "$(tedge config get c8y.proxy.ca_path)" --key "$(tedge config get c8y.proxy.key_path)" --cert "$(tedge config get c8y.proxy.cert_path)" >/dev/null 2>&1; then
+    if curl "https://$(tedge config get c8y.proxy.client.host):$(tedge config get c8y.proxy.client.port)/c8y/tenant/currentTenant" --capath "$(tedge config get c8y.proxy.ca_path)" --key "$(tedge config get c8y.proxy.key_path)" --cert "$(tedge config get c8y.proxy.cert_path)" >/dev/null 2>&1; then
         echo "    Cumulocity IoT Proxy: PASS" >&2
         OK_COUNT=$((OK_COUNT + 1))
     else
