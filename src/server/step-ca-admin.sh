@@ -286,9 +286,7 @@ EOT
         fi
 
         if [ -z "$TOPIC_ID" ]; then
-            # Note: the local device name shouldn't have the .local suffix unless the user has explicitly set
-            DEVICE_ID=$(echo "$TARGET" | sed 's/.local$//g')
-            TOPIC_ID="device/$DEVICE_ID//"
+            TOPIC_ID="device/$CN//"
         fi
 
         echo "Configuring tedge-agent as a child device connecting to $TOPIC_ID"
