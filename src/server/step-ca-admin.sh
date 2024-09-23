@@ -172,6 +172,7 @@ EOT
         TOKEN=${TOKEN:-}
         FINGERPRINT=${FINGERPRINT:-}
         TARGET="${TARGET:-}"
+        TOPIC_ID="${TOPIC_ID:-}"
 
         usage() {
             cat <<EOT
@@ -194,6 +195,8 @@ FLAGS
                                     only valid for a given common name (set when creating the token)
     --main-device <DNS|IP_ADDR>     DNS entry or IP address of the main device in case if it differs from
                                     the ca-url, otherwise the main-device value will be derived from the ca-url
+    --topic-id <TOPIC_ID>           4 part MQTT Topic ID used to address the default, e.g. device/child01//.
+                                    Defaults to "device/<COMMON_NAME>//"
     --help, -h                      Show this help
 
 EXAMPLES
@@ -222,6 +225,10 @@ EOT
                     ;;
                 --fingerprint)
                     FINGERPRINT="$2"
+                    shift
+                    ;;
+                --topic-id)
+                    TOPIC_ID="$2"
                     shift
                     ;;
                 --help|-h)
@@ -278,8 +285,14 @@ EOT
             TARGET=$(echo "$PKI_URL" | sed 's|.*://||g' | sed 's/:.*//g')
         fi
 
+        if [ -z "$TOPIC_ID" ]; then
+            # Note: the local device name shouldn't have the .local suffix unless the user has explicitly set
+            DEVICE_ID=$(echo "$TARGET" | sed 's/.local$//g')
+            TOPIC_ID="device/$DEVICE_ID//"
+        fi
+
         echo "Configuring tedge-agent as a child device connecting to $TOPIC_ID"
-        tedge config set mqtt.device_topic_id "device/$TARGET//"
+        tedge config set mqtt.device_topic_id "$TOPIC_ID"
 
         # thin-edge.io File Transfer Service
         tedge config set http.client.host "$TARGET"
