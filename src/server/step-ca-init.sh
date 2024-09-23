@@ -230,7 +230,18 @@ tedge config set c8y.proxy.key_path /etc/tedge/device-certs/local-tedge.key
 if [ -d /run/systemd ]; then
     systemctl restart mosquitto
     systemctl restart tedge-agent.service
-    systemctl restart tedge-mapper-c8y.service
+
+    # Only restart configured mappers
+    if tedge config get c8y.url >/dev/null 2>&1; then
+        systemctl restart tedge-mapper-c8y.service
+    fi
+    if tedge config get aws.url >/dev/null 2>&1; then
+        systemctl restart tedge-mapper-aws.service
+    fi
+    if tedge config get az.url >/dev/null 2>&1; then
+        systemctl restart tedge-mapper-az.service
+    fi
+
     systemctl enable step-ca
     systemctl restart step-ca
 fi
