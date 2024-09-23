@@ -7,6 +7,19 @@ fi
 
 export STEPPATH="/etc/step-ca"
 
+DOMAIN_SUFFIX="${DOMAIN_SUFFIX:-}"
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --domain-suffix)
+            DOMAIN_SUFFIX="$2"
+            shift
+            ;;
+    esac
+    shift
+done
+
+
 # The path to the file containing the password to encrypt the keys
 export PASSWORD_FILE="$STEPPATH/secrets/password"
 
@@ -179,8 +192,14 @@ EOF
 # Set thin-edge settings
 #
 
+# TODO: When should the .local be added to the client
+TARGET_DNS="$(hostname)"
+if [ -n "$DOMAIN_SUFFIX" ]; then
+    TARGET_DNS="$(hostname).$DOMAIN_SUFFIX"
+fi
+
 # thin-edge.io File Transfer Service
-tedge config set http.client.host "$(hostname)"
+tedge config set http.client.host "$TARGET_DNS"
 tedge config set http.client.port 8000
 tedge config set http.key_path /etc/tedge/device-certs/local-tedge.key
 tedge config set http.cert_path /etc/tedge/device-certs/local-tedge.crt
@@ -200,7 +219,7 @@ tedge config set mqtt.client.auth.key_file /etc/tedge/device-certs/local-tedge.k
 
 # thin-edge.io c8y proxy client settings
 tedge config set c8y.proxy.bind.address 0.0.0.0
-tedge config set c8y.proxy.client.host "$(hostname)"
+tedge config set c8y.proxy.client.host "$TARGET_DNS"
 tedge config set c8y.proxy.client.port 8001
 tedge config set c8y.proxy.ca_path "$(step path)/certs"
 tedge config set c8y.proxy.cert_path /etc/tedge/device-certs/local-tedge.crt
