@@ -237,7 +237,20 @@ EOT
             shift
         done
 
-        step ca bootstrap --ca-url "$PKI_URL" --fingerprint "$FINGERPRINT" --install
+        # Check if the url is resolvable, and if not, fallback to the .local address
+        if ! step ca root --ca-url "$PKI_URL" --fingerprint "$FINGERPRINT" >/dev/null 2>&1; then
+            case "$PKI_URL" in
+                http://*:*|https://*:*)
+                    PKI_URL=$(echo "$PKI_URL" | sed 's/:\([0-9]*\)$/.local:\1/')
+                    ;;
+                *)
+                    PKI_URL="${PKI_URL}.local"
+                    ;;
+            esac
+            echo "Resolving host failed, so trying local domain instead: $PKI_URL"
+        fi
+
+        step ca bootstrap --force --ca-url "$PKI_URL" --fingerprint "$FINGERPRINT" --install
 
         # Note: Only use the device.key_path and cert_path for storage of a common place for mtls cert and key
         tedge config set device.key_path /etc/tedge/device-certs/tedge-agent.key
@@ -245,10 +258,10 @@ EOT
 
         echo "Creating child certificate"
         if [ -n "$TOKEN" ]; then
-            step ca certificate --kty=RSA --ca-url "$PKI_URL" --token "$TOKEN" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
+            step ca certificate --force --kty=RSA --ca-url "$PKI_URL" --token "$TOKEN" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
         else
             # This should let the user prompt
-            step ca certificate --kty=RSA --ca-url "$PKI_URL" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
+            step ca certificate --force --kty=RSA --ca-url "$PKI_URL" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
         fi
 
         # Set permissions (before moving them)
