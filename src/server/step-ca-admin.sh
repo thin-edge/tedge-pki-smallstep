@@ -316,6 +316,21 @@ EOT
 
         echo "The child device has been successfully enrolled"
         ;;
+    delete-ca)
+        #
+        # Delete all of the existing step-ca configuration and root certificate
+        #
+        echo "Deleting the existing step-ca configuration (this will invalidate all existing certificates!)"
+        rm -rf "$STEPPATH"
+        rm -f \
+            /usr/local/share/ca-certificates/root_ca.crt \
+            /etc/ssl/certs/root_ca.pem
+
+        if [ -d /run/systemd ]; then
+            systemctl stop step-ca
+        fi
+        update-ca-certificates -f
+        ;;
     *)
         echo "Unknown command: $ACTION" >&2
         exit 1
