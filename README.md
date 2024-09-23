@@ -74,18 +74,18 @@ The following service timers are used to trigger the certificate renewals.
 
 **Main device**
 
-* cert-renewer@local-tedge.timer - Used by tedge-mapper-c8y and tedge-agent
-* cert-renewer@local-mosquitto.timer - Used for mosquitto authentication
+* `cert-renewer@local-tedge.timer` - Used by tedge-mapper-c8y and tedge-agent
+* `cert-renewer@local-mosquitto.timer` - Used for mosquitto authentication
 
 **Child device**
 
-* cert-renewer@tedge-agent.timer - Used by tedge-agent
+* `cert-renewer@tedge-agent.timer` - Used by tedge-agent
 
 ## Renewing Root and intermediate certificates
 
-The root and intermediate certificates have a default expiration of 10 years, so they need less maintaince.
+The root and intermediate certificates have a default expiration of 10 years, so they need less maintenance.
 
-**Renew intermiate certificate**
+**Renew intermediate certificate**
 
 TODO - The following instructions don't work as it also recreates the private key (which is not desired).
 
