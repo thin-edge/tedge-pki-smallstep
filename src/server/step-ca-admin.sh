@@ -1,6 +1,10 @@
 #!/bin/sh
 set -e
 
+if [ "${DEBUG:-}" = 1 ]; then
+    set -x
+fi
+
 export STEPPATH="${STEPPATH:-/etc/step-ca}"
 PROVISION_PASSWORD_FILE="$STEPPATH/secrets/provisioner-password"
 
