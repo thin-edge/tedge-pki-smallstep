@@ -28,52 +28,9 @@ contents:
       owner: tedge
       group: tedge
 
-  - src: ./src/server/step-ca-admin.sh
-    dst: /usr/bin/
-    file_info:
-      mode: 0755
-      owner: tedge
-      group: tedge
-
   - src: ./src/server/services/systemd/step-ca.service
     dst: /usr/lib/systemd/system/
     file_info:
       mode: 0755
       owner: tedge
       group: tedge
-
-  - src: ./src/client/services/systemd/cert-renewer@.service
-    dst: /usr/lib/systemd/system/
-    file_info:
-      mode: 0644
-      owner: tedge
-      group: tedge
-
-  - src: ./src/client/services/systemd/cert-renewer@.timer
-    dst: /usr/lib/systemd/system/
-    file_info:
-      mode: 0644
-      owner: tedge
-      group: tedge
-
-  - src: ./src/client/services/systemd/cert-renewer.target
-    dst: /usr/lib/systemd/system/
-    file_info:
-      mode: 0644
-      owner: tedge
-      group: tedge
-
-  # TODO: Add renewal service for the root and intermediate ca renewal
-  # - src: ./src/monitor/services/systemd/cert-renewer@.timer
-  #   dst: /usr/lib/systemd/system/
-  #   file_info:
-  #     mode: 0755
-  #     owner: tedge
-  #     group: tedge
-
-  # - src: ./src/monitor/services/systemd/cert-renewer.target
-  #   dst: /usr/lib/systemd/system/
-  #   file_info:
-  #     mode: 0755
-  #     owner: tedge
-  #     group: tedge
