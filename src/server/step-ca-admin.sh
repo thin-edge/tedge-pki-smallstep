@@ -320,9 +320,23 @@ EOT
             echo "Starting/enabling tedge-agent"
             systemctl enable tedge-agent
 
+            # Disable services that don't work on child devices
+            systemctl disable tedge-mapper-collectd >/dev/null 2>&1 ||:
+            systemctl disable collectd >/dev/null 2>&1 ||:
+
             if [ -d /run/systemd ]; then
                 systemctl restart tedge-agent
+
+                if systemctl is-enabled tedge-container-monitor.service >/dev/null 2>&1; then
+                    systemctl restart tedge-container-monitor.service
+                fi
+
+                systemctl stop tedge-mapper-collectd >/dev/null 2>&1 ||:
+                systemctl stop collectd >/dev/null 2>&1 ||:
             fi
+
+            systemctl mask tedge-mapper-collectd >/dev/null 2>&1 ||:
+            systemctl mask collectd >/dev/null 2>&1 ||:
         fi
 
         echo "The child device has been successfully enrolled"
