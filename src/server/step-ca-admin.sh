@@ -250,7 +250,8 @@ EOT
 
         # Check if the url is resolvable, and if not, fallback to the .local address
         # Check with both step and curl as curl can have slightly different results
-        if ! step ca root --ca-url "$PKI_URL" --fingerprint "$FINGERPRINT" >/dev/null 2>&1 || ! curl -4 -s "$PKI_URL" >/dev/null 2>&1; then
+        # Note: curl insecure mode is only used to check if the address is reachable nothing more!
+        if ! step ca root --ca-url "$PKI_URL" --fingerprint "$FINGERPRINT" >/dev/null 2>&1 || ! curl -k -s "$PKI_URL" >/dev/null 2>&1; then
             case "$PKI_URL" in
                 http://*:*|https://*:*)
                     PKI_URL=$(echo "$PKI_URL" | sed 's/:\([0-9]*\)$/.local:\1/')
