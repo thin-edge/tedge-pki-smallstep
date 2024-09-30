@@ -42,7 +42,11 @@ if [ ! -f "$KEY_PASSWORD_FILE" ]; then
 fi
 
 if [ ! -f "$PROVISION_PASSWORD_FILE" ]; then
-    step crypto rand > "$PROVISION_PASSWORD_FILE"
+    if [ -n "$PROVISION_PASSWORD" ]; then
+        printf -- '%s' "$PROVISION_PASSWORD" > "$PROVISION_PASSWORD_FILE"
+    else
+        step crypto rand > "$PROVISION_PASSWORD_FILE"
+    fi
 fi
 
 CURRENT_USER=$(id -u)
