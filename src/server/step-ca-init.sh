@@ -60,6 +60,7 @@ step ca init \
     --name tedge-local \
     --dns=127.0.0.1 \
     --dns=localhost \
+    --dns=tedge \
     --dns="$(hostname)" \
     --dns="$(hostname).local" \
     --address=:8443
@@ -112,6 +113,7 @@ step certificate create \
     --force \
     --san=127.0.0.1 \
     --san=localhost \
+    --san=tedge \
     --san="$(hostname)" \
     --san="$(hostname).local" \
     "$@" \
@@ -147,6 +149,7 @@ step certificate create \
     --force \
     --san=127.0.0.1 \
     --san=localhost \
+    --san=tedge \
     --san="$(hostname)" \
     --san="$(hostname).local" \
     "$@" \
