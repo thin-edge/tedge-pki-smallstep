@@ -6,7 +6,7 @@ if [ "${DEBUG:-}" = 1 ]; then
 fi
 
 export STEPPATH="${STEPPATH:-/etc/step-ca}"
-PROVISION_PASSWORD_FILE="$STEPPATH/secrets/provisioner-password"
+PROVISION_PASSWORD_FILE=${PROVISION_PASSWORD_FILE:-"$STEPPATH/secrets/provisioner-password"}
 
 ACTION="$1"
 shift
@@ -168,7 +168,8 @@ EOT
 
     enrol|enroll)
         CN=${CN:-}
-        PKI_URL=${PKI_URL:-}
+        PKI_URL=${PKI_URL:-"https://tedge:8443"}
+        CA_ROOT=${CA_ROOT:-}
         TOKEN=${TOKEN:-}
         FINGERPRINT=${FINGERPRINT:-}
         TARGET="${TARGET:-}"
@@ -189,15 +190,17 @@ POSITIONAL ARGUMENTS
     COMMON_NAME                     Common name of the child device
 
 FLAGS
-    --ca-url <STEP_CA_URL>          step-ca server endpoint
-    --fingerprint <FINGERPRINT>     Fingerprint of the root CA from the step-ca server
-    --token <TOKEN>                 One time token used to authenticate against the server. The token is
-                                    only valid for a given common name (set when creating the token)
-    --main-device <DNS|IP_ADDR>     DNS entry or IP address of the main device in case if it differs from
-                                    the ca-url, otherwise the main-device value will be derived from the ca-url
-    --topic-id <TOPIC_ID>           4 part MQTT Topic ID used to address the default, e.g. device/child01//.
-                                    Defaults to "device/<COMMON_NAME>//"
-    --help, -h                      Show this help
+    --ca-url <STEP_CA_URL>                step-ca server endpoint
+    --fingerprint <FINGERPRINT>           Fingerprint of the root CA from the step-ca server
+    --token <TOKEN>                       One time token used to authenticate against the server. The token is
+                                          only valid for a given common name (set when creating the token)
+    --root <path>                         Path to the root certificate
+    --provisioner-password-file <path>    Provisioner password file to use for authentication instead of a token
+    --main-device <DNS|IP_ADDR>           DNS entry or IP address of the main device in case if it differs from
+                                          the ca-url, otherwise the main-device value will be derived from the ca-url
+    --topic-id <TOPIC_ID>                 4 part MQTT Topic ID used to address the default, e.g. device/child01//.
+                                          Defaults to "device/<COMMON_NAME>//"
+    --help, -h                            Show this help
 
 EXAMPLES
 
@@ -206,6 +209,15 @@ EXAMPLES
 
     $0 enroll mychild01 --ca-url https://tedge:8443 --fingerprint abcdef --token "asfdasdfasdfasdfasdf" --main-device other-address
     # Enroll a device called mychild01 but use another alias for the device
+
+    $0 enroll mychild01 --ca-url https://tedge:8443 --fingerprint abcdef
+    # Enrol a device and prompt for the provisioner password
+
+    $0 enroll mychild01 --ca-url https://tedge:8443 --root root_ca.pem
+    # Enrol a device and prompt for the provisioner password and use a root ca instead of the fingerprint
+
+    $0 enroll mychild01 --ca-url https://tedge:8443 --root root_ca.pem --provisioner-password-file /run/password
+    # Enrol a device using the provisioner password
 EOT
         }
 
@@ -217,6 +229,14 @@ EOT
                     ;;
                 --ca-url)
                     PKI_URL="$2"
+                    shift
+                    ;;
+                --root)
+                    CA_ROOT="$2"
+                    shift
+                    ;;
+                --provisioner-password-file)
+                    PROVISION_PASSWORD_FILE="$2"
                     shift
                     ;;
                 --token)
@@ -251,6 +271,13 @@ EOT
         # Check if the url is resolvable, and if not, fallback to the .local address
         # Check with both step and curl as curl can have slightly different results
         # Note: curl insecure mode is only used to check if the address is reachable nothing more!
+        if [ -z "$FINGERPRINT" ]; then
+            # Use a given CA root file to lookup the fingerprint, the presence of the root certificate establishes trust with the server
+            if [ -n "$CA_ROOT" ]; then
+                FINGERPRINT=$(step certificate fingerprint "$CA_ROOT")
+            fi
+        fi
+
         if ! step ca root --ca-url "$PKI_URL" --fingerprint "$FINGERPRINT" >/dev/null 2>&1 || ! curl -k -s "$PKI_URL" >/dev/null 2>&1; then
             case "$PKI_URL" in
                 http://*:*|https://*:*)
@@ -272,9 +299,20 @@ EOT
         echo "Creating child certificate"
         if [ -n "$TOKEN" ]; then
             step ca certificate --force --kty=RSA --ca-url "$PKI_URL" --token "$TOKEN" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
+        elif [ -n "$CA_ROOT" ]; then
+            if [ -n "$PROVISION_PASSWORD_FILE" ]; then
+                step ca certificate --force --kty=RSA --ca-url "$PKI_URL" --root "$CA_ROOT" --provisioner-password-file "$PROVISION_PASSWORD_FILE" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
+            else
+                # This should let the user prompt
+                step ca certificate --force --kty=RSA --ca-url "$PKI_URL" --root "$CA_ROOT" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
+            fi
         else
-            # This should let the user prompt
-            step ca certificate --force --kty=RSA --ca-url "$PKI_URL" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
+            if [ -n "$PROVISION_PASSWORD_FILE" ]; then
+                step ca certificate --force --kty=RSA --ca-url "$PKI_URL" --provisioner-password-file "$PROVISION_PASSWORD_FILE" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
+            else
+                # This should let the user prompt
+                step ca certificate --force --kty=RSA --ca-url "$PKI_URL" "$CN" "$(tedge config get device.cert_path)" "$(tedge config get device.key_path)"
+            fi
         fi
 
         # Set permissions (before moving them)
