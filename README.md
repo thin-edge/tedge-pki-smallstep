@@ -98,8 +98,8 @@ It is assumed that you have already installed thin-edge.io no the main device. I
     ```sh
     sudo step-ca-init.sh
 
-    # Or add some additional names to be included in the generated certificates
-    sudo step-ca-init.sh --san "other.name" --san "alternative.name"
+    # Or add an extra host name
+    sudo step-ca-init.sh --host mymaindevice 
 
     # Enforce using .local addresses
     sudo step-ca-init.sh --domain-suffix local
