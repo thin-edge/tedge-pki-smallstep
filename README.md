@@ -2,6 +2,71 @@
 
 The project provides a community plugin for thin-edge.io which provides a local PKI (from [Smallstep](https://smallstep.com/)) to make it easier to setup TLS communication for mutual TLS authentication for all thin-edge.io components and child devices.
 
+## Plugin summary
+
+### What will be deployed to the device?
+
+The following describes the functionality installed
+
+**Server (CA) - tedge-pki-smallstep-ca**
+
+* A service a `step-ca.service` which runs the `step-ca` application which provides the PKI endpoints for local device enrollment
+* Certificate renewal service to renew the certificates used by thin-edge.io on the main device
+    * `cert-renewer@tedge-agent.timer` (timer) which triggers `cert-renewer@tedge-agent.service`
+* The following binaries are installed to interact with the local PKI service
+    * `step-ca-init.sh` - Initialize the local PKI service and generate certificates for the thin-edge.io components on the main device
+
+**Note:** The `tedge-pki-smallstep-ca` package will also install the `tedge-pki-smallstep-client` package, as the `step-ca-admin.sh` script can be used to generate an enrollment one-liner based on a one-time password which is only valid for the given child device common name
+
+**Client - tedge-pki-smallstep-client**
+
+* Certificate renewal service to renew the certificates used by thin-edge.io on the child device
+    * `cert-renewer@tedge-agent.timer` (timer) which triggers `cert-renewer@tedge-agent.service`
+
+* The following binaries are installed to interact with the local PKI service
+    * `step-ca-admin.sh enroll` - Enroll a device by requesting a certificate from the PKI server running on the main device
+    * `step-ca-admin.sh enroll` - Enroll a device by requesting a certificate from the PKI server running on the main device
+
+
+**Technical summary**
+
+The following details the technical aspects of the plugin to get an idea what systems it supports.
+
+|||
+|--|--|
+|**Languages**|`shell` (posix compatible)|
+|**CPU Architectures**|`all/noarch`|
+|**Supported init systems**|`systemd`|
+|**Required Dependencies**|`step-ca` (server), `step-cli` (client)|
+
+### How to do I get it?
+
+The following linux package formats are provided on the releases page and also in the [tedge-community](https://cloudsmith.io/~thinedge/repos/community/packages/) repository:
+
+**Server (CA)**
+
+|Operating System|Repository link|
+|--|--|
+|Debian/Raspbian (deb)|[![Latest version of 'tedge-pki-smallstep-ca' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/thinedge/community/deb/tedge-pki-smallstep-ca/latest/a=all;d=any-distro%252Fany-version;t=binary/?render=true&show_latest=true)](https://cloudsmith.io/~thinedge/repos/community/packages/detail/deb/tedge-pki-smallstep-ca/latest/a=all;d=any-distro%252Fany-version;t=binary/)|
+|Alpine Linux (apk)|[![Latest version of 'tedge-pki-smallstep-ca' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/thinedge/community/alpine/tedge-pki-smallstep-ca/latest/a=noarch;d=alpine%252Fany-version/?render=true&show_latest=true)](https://cloudsmith.io/~thinedge/repos/community/packages/detail/alpine/tedge-pki-smallstep-ca/latest/a=noarch;d=alpine%252Fany-version/)|
+|RHEL/CentOS/Fedora (rpm)|[![Latest version of 'tedge-pki-smallstep-ca' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/thinedge/community/rpm/tedge-pki-smallstep-ca/latest/a=noarch;d=any-distro%252Fany-version;t=binary/?render=true&show_latest=true)](https://cloudsmith.io/~thinedge/repos/community/packages/detail/rpm/tedge-pki-smallstep-ca/latest/a=noarch;d=any-distro%252Fany-version;t=binary/)|
+
+**Client**
+
+|Operating System|Repository link|
+|--|--|
+|Debian/Raspbian (deb)|[![Latest version of 'tedge-pki-smallstep-client' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/thinedge/community/deb/tedge-pki-smallstep-client/latest/a=all;d=any-distro%252Fany-version;t=binary/?render=true&show_latest=true)](https://cloudsmith.io/~thinedge/repos/community/packages/detail/deb/tedge-pki-smallstep-client/latest/a=all;d=any-distro%252Fany-version;t=binary/)|
+|Alpine Linux (apk)|[![Latest version of 'tedge-pki-smallstep-client' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/thinedge/community/alpine/tedge-pki-smallstep-client/latest/a=noarch;d=alpine%252Fany-version/?render=true&show_latest=true)](https://cloudsmith.io/~thinedge/repos/community/packages/detail/alpine/tedge-pki-smallstep-client/latest/a=noarch;d=alpine%252Fany-version/)|
+|RHEL/CentOS/Fedora (rpm)|[![Latest version of 'tedge-pki-smallstep-client' @ Cloudsmith](https://api-prd.cloudsmith.io/v1/badges/version/thinedge/community/rpm/tedge-pki-smallstep-client/latest/a=noarch;d=any-distro%252Fany-version;t=binary/?render=true&show_latest=true)](https://cloudsmith.io/~thinedge/repos/community/packages/detail/rpm/tedge-pki-smallstep-client/latest/a=noarch;d=any-distro%252Fany-version;t=binary/)|
+
+## Features
+
+The following features are supported by the plugin:
+
+* Local PKI service which is installed on the main device
+* Child device enrollment via a client
+* Automatic certificate renewal services for each certificate (run on the device on which the certificate is located on)
+
 ## Installation
 
 ### Pre-requisites
