@@ -89,22 +89,29 @@ It is assumed that you have already installed thin-edge.io no the main device. I
     **Debian/Ubuntu**
 
     ```sh
-    apt-get install tedge-pki-smallstep-ca
+    sudo apt-get update
+    sudo apt-get install tedge-pki-smallstep-ca
     ```
 
 2. Configure and start the step-ca server
 
     ```sh
-    step-ca-init.sh
+    sudo step-ca-init.sh
 
     # Or add some additional names to be included in the generated certificates
-    step-ca-init.sh --san "other.name" --san "alternative.name"
+    sudo step-ca-init.sh --san "other.name" --san "alternative.name"
 
     # Enforce using .local addresses
-    step-ca-init.sh --domain-suffix local
+    sudo step-ca-init.sh --domain-suffix local
     ```
 
 ### Child device
+
+**Important Note** 
+
+For the following instructions to work, device where the step-ca (PKI) service has been installed needs to be reachable by the name given whilst creating the enrollment token. If the step-ca (PKI) service is not reachable, then you may need to manually enter the IP address of the server to the child device's `/etc/hosts` so that name resolution works correctly.
+
+To enroll a child device to a main device, execute the following steps:
 
 1. Install thin-edge.io
 
@@ -117,22 +124,23 @@ It is assumed that you have already installed thin-edge.io no the main device. I
     **Debian/Ubuntu**
 
     ```sh
-    apt-get install tedge-pki-smallstep-client
+    sudo apt-get update
+    sudo apt-get install tedge-pki-smallstep-client
     ```
 
 3. Open a shell on the main device and get an enrollment token
 
     ```sh
-    step-ca-admin.sh token <child_name>
+    sudo step-ca-admin.sh token <child_name>
     ```
 
     You can also specify an explicit `--host <name>` flag if the server is only reachable from a public IP address / DNS entry:
 
     ```sh
-    step-ca-admin.sh token <child_name> --host some.public.name
+    sudo step-ca-admin.sh token <child_name> --host some.public.name
     ```
 
-    Follow the instructions printed to the console, and then execute the command on the child device
+    Follow the instructions printed to the console, and then execute the command on the child device.
 
 ## Managing certificate renewals
 
