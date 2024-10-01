@@ -1,13 +1,42 @@
 #!/bin/sh
 set -e
 
-if [ "${DEBUG:-}" = 1 ]; then
-    set -x
-fi
+usage() {
+    cat << EOT
+Initialize the step-ca PKI service by creating the root, intermedate certificates
+and configuring the provisioner to accept certificate issuing and signing.
 
-export STEPPATH="/etc/step-ca"
+USAGE
+
+  $0 [--host <name>] [--domain-suffix <domain>] [--debug] [--help]
+
+FLAGS
+  --host <TARGET>               Target host which the device is reachable from child devices.
+                                Defaults to the hostname.
+  --domain-suffix <SUFFIX>      Domain suffix to add to the given target host. E.g. 'local' to use
+                                the local mdns address of the host.
+  --debug                       Enable debugging
+  --help, -h                    Show this help
+
+EXAMPLES
+  $0
+  # Initialize and start the step-ca PKI service
+
+  $0 --host maindevice
+  # Initialize step-ca and configure thin-edge.io services to use the
+  target hostname 'maindevice' to reach the main device
+
+  $0 --domain-suffix local
+  # Initialize step-ca and configure thin-edge.io services to the device's
+  hostname with the '.local' domain suffix
+EOT
+}
+
+export STEPPATH="${STEPPATH:-/etc/step-ca}"
 
 DOMAIN_SUFFIX="${DOMAIN_SUFFIX:-}"
+TARGET_HOST="${TARGET_HOST:-}"
+DEBUG="${DEBUG:-0}"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -15,10 +44,46 @@ while [ $# -gt 0 ]; do
             DOMAIN_SUFFIX="$2"
             shift
             ;;
+        --host)
+            TARGET_HOST="$2"
+            shift
+            ;;
+        --debug)
+            DEBUG=1
+            ;;
+        --help|-h)
+            usage
+            exit 0
+            ;;
+        --*|-*)
+            echo "Unknown flag: %s" >&2
+            exit 1
+            ;;
     esac
     shift
 done
 
+if [ "${DEBUG:-}" = 1 ]; then
+    set -x
+fi
+
+# Set the target hostname to be used by thin-edge.io services
+if [ -z "$TARGET_HOST" ]; then
+    echo "Setting thin-edge.io host target from hostname" >&2
+    TARGET_HOST="$(hostname)"
+fi
+if [ -n "$DOMAIN_SUFFIX" ]; then
+    # Only add the domain suffix if it does not already exist
+    case "$TARGET_HOST" in
+        *."$DOMAIN_SUFFIX")
+            echo "Adding domain suffix to host target" >&2
+            ;;
+        *)
+            echo "Adding domain suffix to host target" >&2
+            TARGET_HOST="${TARGET_HOST}.${DOMAIN_SUFFIX}"
+            ;;
+    esac
+fi
 
 # The path to the file containing the password to encrypt the keys
 export PASSWORD_FILE="$STEPPATH/secrets/password"
@@ -55,18 +120,28 @@ if [ "$CURRENT_USER" = 0 ]; then
     chmod 600 "$PASSWORD_FILE"
 fi
 
+cert_names() {
+    prefix="$1"
+    shift
+    names="127.0.0.1 localhost tedge $(hostname) $(hostname).local $*"
+
+    VALUE=$(
+        for i in $names; do
+            echo "$prefix=$i"
+        done
+    )
+    echo "$VALUE" | sort | uniq  
+}
+
+# shellcheck disable=SC2046
 step ca init \
     --password-file="$PASSWORD_FILE" \
     --key-password-file="$KEY_PASSWORD_FILE" \
     --provisioner-password-file="$PROVISION_PASSWORD_FILE" \
     --deployment-type=standalone \
     --provisioner=tedge \
-    --name tedge-local \
-    --dns=127.0.0.1 \
-    --dns=localhost \
-    --dns=tedge \
-    --dns="$(hostname)" \
-    --dns="$(hostname).local" \
+    --name=tedge-local \
+    $(cert_names --dns "$TARGET_HOST") \
     --address=:8443
 
 # Allow other users to inspect certificates
@@ -105,8 +180,9 @@ step ca provisioner update tedge --x509-min-dur 24h --x509-default-dur 720h --x5
 # Create certificate for thin-edge.io components (for tedge user)
 #
 echo "Creating x509 certificates for thin-edge.io" >&2
+# shellcheck disable=SC2046
 step certificate create \
-    --profile leaf \
+    --profile=leaf \
     --not-after=8760h \
     --bundle \
     --kty=RSA \
@@ -115,12 +191,7 @@ step certificate create \
     --no-password \
     --insecure \
     --force \
-    --san=127.0.0.1 \
-    --san=localhost \
-    --san=tedge \
-    --san="$(hostname)" \
-    --san="$(hostname).local" \
-    "$@" \
+    $(cert_names --san "$TARGET_HOST") \
     "$(hostname)" /etc/tedge/device-certs/local-tedge.crt /etc/tedge/device-certs/local-tedge.key
 
 chown tedge:tedge /etc/tedge/device-certs/local-tedge.crt
@@ -141,8 +212,9 @@ fi
 # Create certificate for mosquitto (for mosquitto user)
 #
 echo "Creating x509 certificates for mosquitto" >&2
+# shellcheck disable=SC2046
 step certificate create \
-    --profile leaf \
+    --profile=leaf \
     --not-after=8760h \
     --bundle \
     --kty=RSA \
@@ -151,12 +223,7 @@ step certificate create \
     --no-password \
     --insecure \
     --force \
-    --san=127.0.0.1 \
-    --san=localhost \
-    --san=tedge \
-    --san="$(hostname)" \
-    --san="$(hostname).local" \
-    "$@" \
+    $(cert_names --san "$TARGET_HOST") \
     "$(hostname)" /etc/tedge/device-certs/local-mosquitto.crt /etc/tedge/device-certs/local-mosquitto.key
 
 chown mosquitto:mosquitto /etc/tedge/device-certs/local-mosquitto.crt
@@ -199,14 +266,10 @@ EOF
 # Set thin-edge settings
 #
 
-# TODO: When should the .local be added to the client
-TARGET_DNS="$(hostname)"
-if [ -n "$DOMAIN_SUFFIX" ]; then
-    TARGET_DNS="$(hostname).$DOMAIN_SUFFIX"
-fi
+echo "Configuring thin-edge.io to use host target: $TARGET_HOST" >&2
 
 # thin-edge.io File Transfer Service
-tedge config set http.client.host "$TARGET_DNS"
+tedge config set http.client.host "$TARGET_HOST"
 tedge config set http.client.port 8000
 tedge config set http.key_path /etc/tedge/device-certs/local-tedge.key
 tedge config set http.cert_path /etc/tedge/device-certs/local-tedge.crt
@@ -226,7 +289,7 @@ tedge config set mqtt.client.auth.key_file /etc/tedge/device-certs/local-tedge.k
 
 # thin-edge.io c8y proxy client settings
 tedge config set c8y.proxy.bind.address 0.0.0.0
-tedge config set c8y.proxy.client.host "$TARGET_DNS"
+tedge config set c8y.proxy.client.host "$TARGET_HOST"
 tedge config set c8y.proxy.client.port 8001
 tedge config set c8y.proxy.ca_path "$(step path)/certs"
 tedge config set c8y.proxy.cert_path /etc/tedge/device-certs/local-tedge.crt
