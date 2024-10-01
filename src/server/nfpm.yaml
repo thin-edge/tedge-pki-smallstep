@@ -20,6 +20,7 @@ apk:
 depends:
   - step-ca
   - step-cli
+  - tedge-pki-smallstep-client
 contents:
   - src: ./src/server/step-ca-init.sh
     dst: /usr/bin/
