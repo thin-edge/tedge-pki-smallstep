@@ -16,6 +16,9 @@ check_services_using_tls() {
     echo "Checking service status (with mTLS)"
     echo
 
+    # Maximum time before giving up in the curl connection tests (in seconds)
+    MAX_TIME=15
+
     OK_COUNT=0
     if timeout 5 tedge mqtt pub "tls-client-test" "test" >/dev/null 2>&1; then
         echo "    MQTT Broker:          PASS" >&2
@@ -24,7 +27,7 @@ check_services_using_tls() {
         echo "    MQTT Broker:          FAIL" >&2
     fi
 
-    if curl -s -4 "https://$(tedge config get http.client.host):$(tedge config get http.client.port)/" --capath "$(tedge config get http.ca_path)" --key "$(tedge config get http.client.auth.key_file)" --cert "$(tedge config get http.client.auth.cert_file)"; then
+    if curl -s -4 --max-time "$MAX_TIME" "https://$(tedge config get http.client.host):$(tedge config get http.client.port)/" --capath "$(tedge config get http.ca_path)" --key "$(tedge config get http.client.auth.key_file)" --cert "$(tedge config get http.client.auth.cert_file)"; then
         echo "    FileTransferService:  PASS" >&2
         OK_COUNT=$((OK_COUNT + 1))
     else
@@ -32,7 +35,7 @@ check_services_using_tls() {
     fi
 
     # TODO: Check if the mapper is connected or not
-    if curl -s -4 "https://$(tedge config get c8y.proxy.client.host):$(tedge config get c8y.proxy.client.port)/c8y/tenant/currentTenant" --capath "$(tedge config get c8y.proxy.ca_path)" --key "$(tedge config get c8y.proxy.key_path)" --cert "$(tedge config get c8y.proxy.cert_path)" >/dev/null 2>&1; then
+    if curl -s -4 --max-time "$MAX_TIME" "https://$(tedge config get c8y.proxy.client.host):$(tedge config get c8y.proxy.client.port)/c8y/tenant/currentTenant" --capath "$(tedge config get c8y.proxy.ca_path)" --key "$(tedge config get c8y.proxy.key_path)" --cert "$(tedge config get c8y.proxy.cert_path)" >/dev/null 2>&1; then
         echo "    Cumulocity IoT Proxy: PASS" >&2
         OK_COUNT=$((OK_COUNT + 1))
     else
