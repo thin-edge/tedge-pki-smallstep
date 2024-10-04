@@ -32,6 +32,6 @@ contents:
   - src: ./src/server/services/systemd/step-ca.service
     dst: /usr/lib/systemd/system/
     file_info:
-      mode: 0755
+      mode: 0644
       owner: tedge
       group: tedge
