@@ -392,6 +392,11 @@ EOT
             shift
         done
 
+        if [ -z "$CN" ]; then
+            echo "Using hostname as the certificate Common Name" >&2
+            CN=$(hostname)
+        fi
+
         # Check if the url is resolvable, and if not, fallback to the .local address
         # Check with both step and curl as curl can have slightly different results
         # Note: curl insecure mode is only used to check if the address is reachable nothing more!
@@ -518,6 +523,23 @@ EOT
         fi
         update-ca-certificates -f
         ;;
+
+    restart_service)
+        SERVICE_NAME="$1"
+        CMD_TOPIC="$(tedge config get mqtt.topic_root)/$(tedge config get mqtt.device_topic_id)/cmd/restart_service/local-$(date +%s)"
+        tedge mqtt pub -r -q 1 \
+            "$CMD_TOPIC" \
+            "{\"status\":\"init\",\"name\":\"$SERVICE_NAME\"}"
+        
+        # Wait for command to finish
+        echo "Waiting for service to restart (TODO: wait and subscribe for updates)" >&2
+        tedge mqtt pub -r -q 1 "$CMD_TOPIC" ""
+        sleep 90
+
+        echo "Clearing request" >&2
+        tedge mqtt pub -r -q 1 "$CMD_TOPIC" ""
+        ;;
+
     *)
         echo "Unknown command: $ACTION" >&2
         exit 1
