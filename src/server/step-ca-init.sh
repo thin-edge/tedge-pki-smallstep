@@ -249,9 +249,14 @@ fi
 # tedge config set mqtt.external.cert_file "$(step path)/certs/intermediate_ca.crt"
 # tedge config set mqtt.external.key_file "$(step path)/secrets/intermediate_ca_key"
 
-# FIXME: should thin-edge.io support the external listener insteaf of having to edit the mosquitto configure directly
-# TODO: Where can the tls listener be added to, conf.d, or /etc/tedge/mosquitto-conf/?
-cat << EOF > "/etc/mosquitto/conf.d/tls-listener.conf"
+# Store external listener under /etc/tedge/mosquitto-conf so it can be more easily backed up
+# during A/B updates as the /etc/tedge folder is generally already handled by firmware
+# update logic
+# In previous releases of tedge-pki-smallstep, it stored the location under /etc/mosquitto/conf.d/tls-listener.conf
+# so remove it and replace it with the updated path.
+# Remove previous location of file
+rm -f /etc/mosquitto/conf.d/tls-listener.conf
+cat << EOF > "/etc/tedge/mosquitto-conf/tls-listener.conf"
 listener 8883 0.0.0.0
 allow_anonymous false
 require_certificate true

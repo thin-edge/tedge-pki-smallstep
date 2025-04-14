@@ -45,6 +45,15 @@ cleanInstall() {
 
 upgrade() {
     printf "\033[32m Post Install of an upgrade\033[0m\n"
+    if [ -f /etc/mosquitto/conf.d/tls-listener.conf ]; then
+      echo "Moving /etc/mosquitto/conf.d/tls-listener.conf to /etc/tedge/mosquitto-conf/"
+      if mv /etc/mosquitto/conf.d/tls-listener.conf /etc/tedge/mosquitto-conf/; then
+        if [ "${use_systemctl}" = "True" ]; then
+          systemctl restart mosquitto ||:
+        fi
+      fi
+    fi
+
     cleanInstall
 }
 
